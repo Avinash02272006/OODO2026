@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Editor - LearnSphere</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        :root {
+            --primary: #b8594d;
+            --bg-body: #f8f6f2;
+            --text-main: #1a1614;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        header {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-outline {
+            background: #fff;
+            border-color: var(--border);
+            color: #666;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Main Layout */
+        .container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            overflow: hidden;
+        }
+
+        /* Sidebar (Settings) */
+        .settings-panel {
+            background: #fff;
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #444;
+        }
+
+        .input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+        }
+
+        .toggle-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .toggle-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #10b981;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(16px);
+        }
+
+        /* Content Area */
+        .editor-area {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .section-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            margin-bottom: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .content-list {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .content-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+
+        .content-rx {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .type-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .type-video {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .type-doc {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #fff;
+            width: 500px;
+            padding: 30px;
+            border-radius: 12px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="breadcrumb">
+            <span onclick="location.href='/dashboard'" style="cursor:pointer">&larr; Dashboard</span>
+            <span>/</span>
+            <span style="font-weight: 700;">Course Editor</span>
+        </div>
+        <div class="actions">
+            <button class="btn btn-outline" onclick="saveCourse()">Save Draft</button>
+            <button class="btn btn-primary" onclick="previewCourse()">Preview Course</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar: Course Settings -->
+        <aside class="settings-panel">
+            <h3 style="margin-bottom: 20px;">Course Settings</h3>
+
+            <div class="form-group">
+                <label class="label">Course Title</label>
+                <input type="text" class="input" id="courseTitle" value="Basics of Odoo CRM">
+            </div>
+
+            <div class="form-group">
+                <label class="label">Tags</label>
+                <div style="display:flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">
+                    <span
+                        style="background:#e5e7eb; padding:2px 8px; border-radius:12px; font-size:0.8rem;">sales</span>
+                    <span style="background:#e5e7eb; padding:2px 8px; border-radius:12px; font-size:0.8rem;">crm</span>
+                </div>
+                <input type="text" class="input" style="margin-top: 5px;" placeholder="Add tags...">
+            </div>
+
+            <div class="form-group">
+                <label class="label">Course Image</label>
+                <div
+                    style="height: 120px; background: #eee; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#666; font-size:0.8rem; cursor:pointer; border:1px dashed #ccc;">
+                    Click to Upload
+                </div>
+            </div>
+
+            <div class="toggle-wrapper" style="margin-bottom: 10px;">
+                <span class="toggle-label">Publish on Website</span>
+                <label class="switch">
+                    <input type="checkbox" id="publishToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-wrapper">
+                <span class="toggle-label">Share on Web</span>
+                <label class="switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+        </aside>
+
+        <!-- Main Editor Area -->
+        <main class="editor-area">
+            <div class="section-card">
+                <div class="tabs">
+                    <div class="tab active">Content</div>
+                    <div class="tab">Description</div>
+                    <div class="tab">Options</div>
+                    <div class="tab">Quiz</div>
+                </div>
+
+                <!-- Content Tab -->
+                <div id="contentTab">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h4 style="font-size:1.1rem;">Course Material</h4>
+                        <button class="btn btn-primary" onclick="toggleModal()"><i data-feather="plus"></i> Add
+                            Content</button>
+                    </div>
+
+                    <div class="content-list" id="contentList">
+                        <!-- Dynamic Items -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Adding Content -->
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px;">Add New Content</h3>
+            <div class="form-group">
+                <label class="label">Content Title</label>
+                <input type="text" class="input" id="newTitle">
+            </div>
+            <div class="form-group">
+                <label class="label">Type</label>
+                <select class="input" id="newType">
+                    <option value="video">Video</option>
+                    <option value="doc">Document</option>
+                </select>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button class="btn btn-outline" onclick="toggleModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addContent()">Add Content</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+
+        const courseId = window.location.pathname.split('/').pop();
+
+        // Mock Data simulating what we fetched from Python
+        const items = [
+            { title: "Advanced Sales & CRM Automation", type: "video" },
+            { title: "Odoo CRM Best Practices", type: "doc" }
+        ];
+
+        function renderItems() {
+            const list = document.getElementById('contentList');
+            list.innerHTML = '';
+            items.forEach(item => {
+                const badgeClass = item.type === 'video' ? 'type-video' : 'type-doc';
+                list.innerHTML += `
+                <div class="content-item">
+                    <div class="content-rx">
+                        <i data-feather="${item.type === 'video' ? 'video' : 'file-text'}"></i>
+                        <span style="font-weight:500;">${item.title}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span class="type-badge ${badgeClass}">${item.type}</span>
+                        <button class="btn btn-outline" style="padding:4px 8px;"><i data-feather="more-vertical" style="width:14px;"></i></button>
+                    </div>
+                </div>
+            `;
+            });
+            feather.replace();
+        }
+
+        function toggleModal() {
+            document.getElementById('addModal').classList.toggle('active');
+        }
+
+        function addContent() {
+            const title = document.getElementById('newTitle').value;
+            const type = document.getElementById('newType').value;
+            if (title) {
+                items.push({ title, type });
+                renderItems();
+                toggleModal();
+            }
+        }
+
+        function saveCourse() {
+            alert("Saving course configuration to database...");
+        }
+
+        function previewCourse() {
+            window.open(`/course/${courseId}`, '_blank');
+        }
+
+        renderItems();
+    </script>
+
+</body>
+
+</html>

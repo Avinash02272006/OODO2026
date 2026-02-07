@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400">
+  <defs>
+    <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b9d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#56ccf2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Abstract L and S Shape (White) -->
+  <path d="M 50,20 
+           L 100,20 
+           Q 120,250 140,350 
+           L 350,250 
+           Q 400,230 480,200 
+           L 400,380 
+           Q 250,300 150,380 
+           L 50,400 
+           Q 80,200 50,20 Z" 
+        fill="white" />
+        
+  <path d="M 180,100 
+           Q 250,50 350,100 
+           Q 400,120 450,150 
+           Q 350,150 250,120 
+           Q 200,100 180,100 Z" 
+        fill="white" />
+
+  <!-- The Gradient Star -->
+  <path d="M 300,110 L 310,130 L 330,140 L 310,150 L 300,170 L 290,150 L 270,140 L 290,130 Z" 
+        fill="url(#starGrad)" />
+</svg>

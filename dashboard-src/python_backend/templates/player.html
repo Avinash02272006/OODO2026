@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Player - LearnSphere</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        :root {
+            --primary: #b8594d;
+            --bg-sidebar: #1a1614;
+            --text-main: #1a1614;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Playlist */
+        aside {
+            width: 300px;
+            background: #fff;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .course-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            background: #f9f9f9;
+        }
+
+        .lesson-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .lesson-item {
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            transition: 0.2s;
+            color: #555;
+        }
+
+        .lesson-item:hover {
+            background: #f0f0f0;
+        }
+
+        .lesson-item.active {
+            background: var(--bg-sidebar);
+            color: #fff;
+        }
+
+        .lesson-item.completed i {
+            color: #10b981;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            background: #f8f6f2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            height: 60px;
+            padding: 0 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .viewer {
+            width: 100%;
+            max-width: 900px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            min-height: 500px;
+        }
+
+        /* Video Container */
+        .video-responsive {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #000;
+        }
+
+        .video-responsive iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #eee;
+            color: #333;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <aside>
+        <div class="course-header">
+            <button class="btn btn-secondary" style="margin-bottom: 10px; padding: 5px 10px; font-size: 0.8rem;"
+                onclick="location.href='/dashboard'">&larr; Back to Dashboard</button>
+            <h3 id="courseTitle">Loading...</h3>
+            <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">0% Completed</div>
+        </div>
+        <div class="lesson-list" id="playlist">
+            <!-- Lessons Injected via JS -->
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <h2 id="lessonTitle">Select a Lesson</h2>
+            <div id="userPoints">🏆 0 pts</div>
+        </header>
+
+        <div class="content-area">
+            <div class="viewer">
+                <!-- Dynamic Content (Video/Quiz/Text) -->
+                <div id="contentContainer"></div>
+
+                <div
+                    style="margin-top: 30px; display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 20px;">
+                    <button class="btn btn-secondary" id="prevBtn" disabled>Previous</button>
+                    <button class="btn btn-primary" id="nextBtn">Complete & Next &rarr;</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        feather.replace();
+        const token = localStorage.getItem('token');
+        if (!token) location.href = '/';
+
+        // Mock Data (In reality, we Fetch this from Python /api/course/{id})
+        // Since fetch logic is slightly complex to setup without live DB data for lessons,
+        // I will use JS to Simulate the "Play" experience using the ID passed in URL
+
+        const courseId = window.location.pathname.split('/').pop();
+
+        // MOCK LESSON DATA (This is where JS works "when needed")
+        const mockLessons = [
+            { id: 1, title: "Introduction to the Course", type: "video", content: "https://www.youtube.com/embed/SqcY0GlETPk" },
+            { id: 2, title: "Setting up the Environment", type: "document", content: "To set up your environment, please install Python 3.9+ and VS Code." },
+            {
+                id: 3, title: "Core Concepts Quiz", type: "quiz", questions: [
+                    { q: "What is React?", options: ["Library", "Framework", "Database"], ans: 0 },
+                    { q: "What is 2+2?", options: ["3", "4", "5"], ans: 1 }
+                ]
+            }
+        ];
+
+        let currentLessonIndex = 0;
+
+        function init() {
+            document.getElementById('courseTitle').innerText = "Course #" + courseId;
+            renderPlaylist();
+            loadLesson(0);
+        }
+
+        function renderPlaylist() {
+            const list = document.getElementById('playlist');
+            list.innerHTML = '';
+            mockLessons.forEach((l, idx) => {
+                const div = document.createElement('div');
+                div.className = `lesson-item ${idx === currentLessonIndex ? 'active' : ''}`;
+                div.innerHTML = `<i data-feather="${l.type === 'video' ? 'play-circle' : (l.type === 'quiz' ? 'help-circle' : 'file-text')}"></i> ${l.title}`;
+                div.onclick = () => loadLesson(idx);
+                list.appendChild(div);
+            });
+            feather.replace();
+        }
+
+        function loadLesson(idx) {
+            currentLessonIndex = idx;
+            const lesson = mockLessons[idx];
+            document.getElementById('lessonTitle').innerText = lesson.title;
+            const container = document.getElementById('contentContainer');
+
+            renderPlaylist(); // Update active state
+
+            // JS Logic to Switch Content Type
+            if (lesson.type === 'video') {
+                container.innerHTML = `<div class="video-responsive"><iframe src="${lesson.content}" frameborder="0" allowfullscreen></iframe></div>`;
+            } else if (lesson.type === 'document') {
+                container.innerHTML = `<div style="line-height: 1.6; font-size: 1.1rem; color: #333;">${lesson.content}</div>`;
+            } else if (lesson.type === 'quiz') {
+                let html = `<h3>${lesson.title}</h3><form id="quizForm">`;
+                lesson.questions.forEach((q, qIdx) => {
+                    html += `<div style="margin: 20px 0;"><p><strong>${qIdx + 1}. ${q.q}</strong></p>`;
+                    q.options.forEach((opt, oIdx) => {
+                        html += `<label style="display:block; padding: 5px;"><input type="radio" name="q${qIdx}" value="${oIdx}"> ${opt}</label>`;
+                    });
+                    html += `</div>`;
+                });
+                html += `</form>`;
+                container.innerHTML = html;
+            }
+
+            // Btn Logic
+            document.getElementById('prevBtn').disabled = idx === 0;
+            document.getElementById('nextBtn').innerText = (idx === mockLessons.length - 1) ? "Finish Course" : "Complete & Next";
+        }
+
+        document.getElementById('prevBtn').onclick = () => {
+            if (currentLessonIndex > 0) loadLesson(currentLessonIndex - 1);
+        };
+
+        document.getElementById('nextBtn').onclick = () => {
+            // Here we would call API to mark complete
+            // api.post(`/lessons/${id}/complete`)
+
+            if (currentLessonIndex < mockLessons.length - 1) {
+                loadLesson(currentLessonIndex + 1);
+            } else {
+                alert("Course Completed! +50 Points");
+                location.href = '/dashboard';
+            }
+        };
+
+        init();
+    </script>
+
+</body>
+
+</html>
