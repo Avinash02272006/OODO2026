@@ -1,25 +1,25 @@
 // Prisma Schema - LearnSphere Industrial-Grade LMS
-// This schema enforces strict relationships and enums for roles and types
+// Enhanced for production with Review tracking and robust progress metrics
 
 generator client {
   provider = "prisma-client-js"
   binaryTargets = ["native"]
 }
 
-// Using SQLite for seamless local development, easy to switch to PostgreSQL
 datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
 }
 
-// User Roles Defined as Enum for Strict Typing
-// Enforces: Admin, Teacher, User (Student)
 model User {
   id             String        @id @default(uuid())
   email          String        @unique
   passwordHash   String
   name           String
   role           String        @default("user") // "admin", "teacher", "user"
+  avatar         String?
+  bio            String?
+  status         String        @default("active") // "active", "on_leave", "suspended"
   createdAt      DateTime      @default(now())
   
   // Relations
@@ -27,22 +27,24 @@ model User {
   enrollments    Enrollment[]
   quizAttempts   QuizAttempts[]
   progress       UserProgress[]
+  reviews        Review[]
 
   // Gamification Profile
   points         Int           @default(0)
+  level          Int           @default(1)
   rank           String        @default("Newbie") // Explorer, Achiever, Specialist, Expert, Master
 }
 
 model Course {
   id             String        @id @default(uuid())
   title          String
-  slug           String        @unique // For URL-friendly access
+  slug           String        @unique
+  subtitle       String?
   description    String?
   thumbnail      String?
-  tags           String?       // Comma separated tags
+  tags           String?       
   status         String        @default("draft") // "draft", "published", "archived"
   
-  // Access Control Rules
   visibility     String        @default("everyone") // "everyone", "signed_in"
   accessRule     String        @default("open")     // "open", "invite", "payment"
   price          Float?        @default(0.0)
@@ -54,6 +56,7 @@ model Course {
   // Content
   modules        Module[]
   enrollments    Enrollment[]
+  reviews        Review[]
 
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -74,18 +77,30 @@ model Lesson {
   module         Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   
   title          String
-  type           String        // "video", "document", "quiz"
-  contentUrl     String?       // URL for video/doc
+  type           String        // "video", "document", "quiz", "image"
+  contentUrl     String?       
   description    String?
   duration       Int?          // Minutes
-
-  // Quiz Specifics (JSON blob for simple structure, or separate table for strict SQL)
-  quizData       String?       // Stored as JSON string: { questions: [{ q: "", options: [], answer: "" }] }
-  basePoints     Int           @default(10) // Points awarded for first attempt
-
+  basePoints     Int           @default(10)
   orderIndex     Int           @default(0)
+  allowDownload  Boolean       @default(false)
+
+  // Quiz Specifics
+  quizData       String?       // JSON: { questions: [], rewards: {} }
+
   progress       UserProgress[]
   quizAttempts   QuizAttempts[]
+}
+
+model Review {
+  id             String        @id @default(uuid())
+  rating         Int
+  text           String
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
 }
 
 model Enrollment {
@@ -96,10 +111,11 @@ model Enrollment {
   course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   
   status         String        @default("active") // "active", "completed", "dropped"
+  progressPercent Float        @default(0)
   joinedAt       DateTime      @default(now())
   completedAt    DateTime?
 
-  @@unique([userId, courseId]) // Prevent double enrollment
+  @@unique([userId, courseId])
 }
 
 model UserProgress {
@@ -110,6 +126,7 @@ model UserProgress {
   lesson         Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   
   isCompleted    Boolean       @default(false)
+  lastAccessed   DateTime      @default(now())
   completedAt    DateTime?
   
   @@unique([userId, lessonId])
@@ -122,9 +139,10 @@ model QuizAttempts {
   lessonId       String
   lesson         Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   
-  score          Int           // Percentage 0-100
+  score          Int           
   attemptNumber  Int           @default(1)
   pointsEarned   Int           @default(0)
   
   createdAt      DateTime      @default(now())
 }
+

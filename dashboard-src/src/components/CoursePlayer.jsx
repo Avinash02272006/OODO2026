@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    ChevronLeft, ChevronRight, CheckCircle, Circle, PlayCircle, FileText, HelpCircle, Menu, X, Star, File, BookOpen, Check, LogOut, Search, Paperclip, Send, Sparkles, Bot, Zap, Copy, Clock
+    ChevronLeft, ChevronRight, CheckCircle, Circle, PlayCircle, FileText, HelpCircle, Menu, X, Star, File, BookOpen, Check, LogOut, Search, Paperclip, Send, Sparkles, Bot, Zap, Copy, Clock, Share2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api';
@@ -477,17 +477,34 @@ export default function CoursePlayer({ courseId, user, onBack }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [showAiSummary, setShowAiSummary] = useState(false);
 
-    // Mock Reviews Data
-    const mockReviews = [
-        { id: 2, name: 'User 2', avatar: 'U', text: 'This course was incredibly helpful for understanding the CRM module.', rating: 5 },
-        { id: 3, name: 'User 3', avatar: 'J', text: 'Great content, but could use more examples on automation.', rating: 4 },
-        { id: 4, name: 'User 4', avatar: 'M', text: 'Straight to the point. Loved it.', rating: 5 },
-    ];
+    const [reviewText, setReviewText] = useState('');
+    const [reviewRating, setReviewRating] = useState(5);
+    const queryClient = useQueryClient();
 
     // Fetch Course & Lessons
-    const { data: course, isLoading } = useQuery({
+    const { data: course, isLoading, refetch: refetchCourse } = useQuery({
         queryKey: ['course', courseId],
         queryFn: () => api.get(`/courses/${courseId}`).then(res => res.data)
+    });
+
+    const finishLessonMutation = useMutation({
+        mutationFn: (lessonId) => api.post(`/lessons/${lessonId}/complete`),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['course', courseId]);
+            queryClient.invalidateQueries(['user-profile']);
+            // Refetch course to get updated progressMap if server returns it
+            refetchCourse();
+        }
+    });
+
+    const submitReviewMutation = useMutation({
+        mutationFn: (reviewData) => api.post(`/courses/${courseId}/reviews`, reviewData),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['course', courseId]);
+            setReviewText('');
+            setReviewRating(5);
+            alert("Review submitted successfully!");
+        }
     });
 
     const isGuest = !user || user.role === 'guest';
@@ -496,8 +513,9 @@ export default function CoursePlayer({ courseId, user, onBack }) {
     const playlist = course ? [
         ...(course.lessons || []).map(l => ({
             ...l,
+            category: l.type || l.category, // Normalize
             itemType: 'lesson',
-            attachmentText: (l.type === 'document' || l.category === 'document') ? 'Download PDF' : (l.type === 'video' ? 'Transcript' : null)
+            attachmentText: (l.type === 'document' || l.category === 'document' || l.allowDownload) ? 'Resource Available' : (l.type === 'video' ? 'Transcript' : null)
         })),
         ...(course.quizzes || []).map(q => ({ ...q, itemType: 'quiz', duration: q.duration || '15 min' }))
     ] : [];
@@ -513,9 +531,10 @@ export default function CoursePlayer({ courseId, user, onBack }) {
         });
     }
 
-    // Calculate Progress
-    const completedCount = Object.keys(itemStatus).length;
+    // Use real progress from course data if available
+    const progressMap = course?.progressMap || {};
     const totalCount = playlist.length;
+    const completedCount = Object.keys(progressMap).filter(k => progressMap[k]).length;
     const progressPercent = Math.round((completedCount / totalCount) * 100) || 0;
 
     const handlePlayItem = (item) => {
@@ -528,9 +547,9 @@ export default function CoursePlayer({ courseId, user, onBack }) {
         setViewMode('overview');
     };
 
-    const handleItemComplete = () => {
-        if (activeItem) {
-            setItemStatus(prev => ({ ...prev, [activeItem.id]: 'completed' }));
+    const handleItemComplete = async () => {
+        if (activeItem && activeItem.type === 'lesson') {
+            await finishLessonMutation.mutateAsync(activeItem.id);
         }
 
         const idx = playlist.findIndex(i => i.id === activeItem?.id && i.itemType === activeItem?.itemType);
@@ -553,7 +572,7 @@ export default function CoursePlayer({ courseId, user, onBack }) {
 
         return (
             <div className="h-screen flex bg-[#09090b] text-white overflow-hidden relative font-sans">
-                {showAiSummary && <AiSummaryModal item={currentItem} onClose={() => setShowAiSummary(false)} />}
+                {showAiSummary && <AiSummaryModal item={currentItem || { title: course.title, description: course.description }} onClose={() => setShowAiSummary(false)} />}
 
                 {/* 1. Professional Sidebar */}
                 <aside className={`${sidebarOpen ? 'w-[320px]' : 'w-0'} bg-[#111114] border-r border-white/5 shrink-0 transition-all duration-300 flex flex-col relative z-20`}>
@@ -584,7 +603,7 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                         <div className="space-y-0.5">
                             {playlist.map((item, index) => {
                                 const isActive = currentItem.id === item.id && currentItem.itemType === item.itemType;
-                                const isCompleted = itemStatus[item.id] === 'completed';
+                                const isCompleted = progressMap[item.id] === true;
 
                                 return (
                                     <button
@@ -648,13 +667,37 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                             </div>
                         </div>
 
-                        <button
-                            onClick={() => setShowAiSummary(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/10 active:scale-95 border border-white/10"
-                        >
-                            <Sparkles size={14} className="text-blue-200" />
-                            <span>AI Companion</span>
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {currentItem.allowDownload && (
+                                <a
+                                    href={currentItem.contentUrl}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600/10 hover:bg-green-600 text-green-500 hover:text-white text-xs font-bold rounded-lg transition-all border border-green-500/20 active:scale-95"
+                                >
+                                    <Download size={14} />
+                                    <span>Download Resource</span>
+                                </a>
+                            )}
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    alert('Course link copied to clipboard!');
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg transition-all border border-white/10 active:scale-95"
+                            >
+                                <Share2 size={14} className="text-gray-400" />
+                                <span>Share</span>
+                            </button>
+                            <button
+                                onClick={() => setShowAiSummary(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/10 active:scale-95 border border-white/10"
+                            >
+                                <Sparkles size={14} className="text-blue-200" />
+                                <span>AI Companion</span>
+                            </button>
+                        </div>
                     </header>
 
                     {/* Content Viewer */}
@@ -665,7 +708,7 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                             ) : (
                                 <div className="flex-1 flex flex-col">
                                     <div className="flex-1 flex items-center justify-center p-8">
-                                        {currentItem.category === 'video' && (
+                                        {(currentItem.category === 'video' || currentItem.type === 'video') && (
                                             <div className="w-full aspect-video bg-black rounded-xl border border-white/5 flex items-center justify-center relative group">
                                                 <PlayCircle size={64} className="text-white/20 group-hover:text-blue-500 transition-all cursor-pointer group-hover:scale-110" />
                                                 <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
@@ -673,7 +716,7 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                                                 </div>
                                             </div>
                                         )}
-                                        {currentItem.category === 'document' && (
+                                        {(currentItem.category === 'document' || currentItem.type === 'document') && (
                                             <div className="w-full h-full flex bg-[#0d0d0d]">
                                                 <div className="flex-1 overflow-y-auto p-12 custom-scrollbar-dark relative">
                                                     <div className="max-w-2xl mx-auto space-y-8">
@@ -714,8 +757,8 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                                                 </div>
                                             </div>
                                         )}
-                                        {currentItem.category === 'image' && (
-                                            <img src={currentItem.content_url} className="w-full h-full object-contain" alt="Content" />
+                                        {(currentItem.category === 'image' || currentItem.type === 'image') && (
+                                            <img src={currentItem.contentUrl || currentItem.content_url} className="w-full h-full object-contain" alt="Content" />
                                         )}
                                     </div>
 
@@ -745,10 +788,15 @@ export default function CoursePlayer({ courseId, user, onBack }) {
     // VIEW: OVERVIEW
     // -----------------------------------------------
     return (
-        <div className="min-h-screen bg-[#09090b] font-sans text-white overflow-y-auto custom-scrollbar-dark flex flex-col">
+        <div className="min-h-screen bg-[#09090b] font-sans text-white overflow-y-auto custom-scrollbar-dark flex flex-col relative">
+            {showAiSummary && <AiSummaryModal item={activeItem ? playlist.find(i => i.id === activeItem.id) : { title: course.title, description: course.description }} onClose={() => setShowAiSummary(false)} />}
+
             {/* Professional Header */}
             <header className="h-16 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-50">
-                <div className="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                <div
+                    onClick={onBack}
+                    className="font-bold text-xl tracking-tight text-white flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                     <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <Star size={18} className="text-white fill-white" />
                     </div>
@@ -871,7 +919,7 @@ export default function CoursePlayer({ courseId, user, onBack }) {
 
                         <div className="grid grid-cols-1 gap-3">
                             {playlist.map((item, index) => {
-                                const isCompleted = itemStatus[item.id] === 'completed';
+                                const isCompleted = progressMap[item.id] === true;
 
                                 return (
                                     <button
@@ -932,13 +980,17 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                                 </div>
                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em]">Verified Student Rating</p>
                             </div>
-                            <button className="px-8 py-4 bg-white text-black text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-gray-200 transition-all shadow-xl active:scale-95">
+                            <button
+                                onClick={() => {
+                                    document.getElementById('review-input-area')?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                className="px-8 py-4 bg-white text-black text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-gray-200 transition-all shadow-xl active:scale-95"
+                            >
                                 Submit Feedback
                             </button>
                         </div>
 
-                        {/* Current User Input Box */}
-                        <div className="flex gap-8 mb-16">
+                        <div id="review-input-area" className="flex gap-8 mb-16">
                             <div className={`w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center font-bold text-white shadow-xl border border-white/10 bg-blue-600`}>
                                 {user?.name?.charAt(0) || 'U'}
                             </div>
@@ -946,15 +998,31 @@ export default function CoursePlayer({ courseId, user, onBack }) {
                                 <h5 className="text-xs text-gray-500 font-bold uppercase tracking-widest">Contribute to the collective</h5>
                                 <div className="border border-white/5 rounded-2xl bg-[#111114] p-6 focus-within:border-blue-500/30 transition-all">
                                     <textarea
+                                        value={reviewText}
+                                        onChange={(e) => setReviewText(e.target.value)}
                                         placeholder="What are your thoughts on this curriculum?"
                                         className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-gray-700 resize-none h-28 text-sm"
                                     />
                                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
                                         <div className="flex gap-1">
-                                            {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="text-gray-700 hover:text-blue-500 cursor-pointer transition-colors" />)}
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                                <Star
+                                                    key={i}
+                                                    size={16}
+                                                    onClick={() => setReviewRating(i)}
+                                                    className={`${reviewRating >= i ? 'text-blue-500 fill-blue-500' : 'text-gray-700'} hover:text-blue-500 cursor-pointer transition-colors`}
+                                                />
+                                            ))}
                                         </div>
-                                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg active:scale-95">
-                                            Post Review <Send size={12} />
+                                        <button
+                                            onClick={() => {
+                                                if (!reviewText.trim()) return;
+                                                submitReviewMutation.mutate({ text: reviewText, rating: reviewRating });
+                                            }}
+                                            disabled={submitReviewMutation.isPending}
+                                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                        >
+                                            {submitReviewMutation.isPending ? 'Posting...' : 'Post Review'} <Send size={12} />
                                         </button>
                                     </div>
                                 </div>
@@ -963,18 +1031,29 @@ export default function CoursePlayer({ courseId, user, onBack }) {
 
                         {/* Reviews List */}
                         <div className="space-y-12">
-                            {mockReviews.map((review) => (
+                            {(course.reviews || []).length === 0 && (
+                                <p className="text-center text-gray-500 py-10 italic">No reviews yet. Be the first to share your experience!</p>
+                            )}
+                            {(course.reviews || []).map((review) => (
                                 <div key={review.id} className="flex gap-8 group">
                                     <div className={`w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center font-bold text-white shadow-lg border border-white/10 bg-gray-800 group-hover:bg-gray-700 transition-colors`}>
-                                        {review.avatar}
+                                        {review.user?.name?.charAt(0) || 'U'}
                                     </div>
                                     <div className="flex-1 space-y-3">
                                         <div className="flex items-center justify-between">
-                                            <h6 className="text-sm font-bold text-white">{review.name}</h6>
-                                            <span className="text-[10px] text-gray-600 font-bold italic">Oct 2025</span>
+                                            <h6 className="text-sm font-bold text-white">{review.user?.name}</h6>
+                                            <span className="text-[10px] text-gray-600 font-bold italic">
+                                                {new Date(review.createdAt).toLocaleDateString()}
+                                            </span>
                                         </div>
                                         <div className="flex gap-1 mb-2">
-                                            {[...Array(review.rating)].map((_, i) => <Star key={i} size={10} className="fill-blue-500/50 text-blue-500/50" />)}
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star
+                                                    key={i}
+                                                    size={10}
+                                                    className={`${review.rating > i ? 'fill-blue-500 text-blue-500' : 'text-gray-700'}`}
+                                                />
+                                            ))}
                                         </div>
                                         <p className="text-gray-400 leading-relaxed text-sm bg-white/[0.02] border border-white/5 p-6 rounded-2xl group-hover:bg-white/[0.04] transition-colors">
                                             {review.text}

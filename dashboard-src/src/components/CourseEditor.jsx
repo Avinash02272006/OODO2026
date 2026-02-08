@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft, UploadCloud, Eye, Plus, MoreVertical,
-    Video, FileText, Image as ImageIcon, HelpCircle, X, Check
+    Video, FileText, Image as ImageIcon, HelpCircle, X, Check, Trash2
 } from 'lucide-react';
 import { api } from '../api';
 import ContentWizard from './ContentWizard';
@@ -31,6 +31,14 @@ export default function CourseEditor({ courseId, onBack }) {
     const deleteLesson = useMutation({
         mutationFn: (id) => api.delete(`/lessons/${id}`),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+    });
+
+    const deleteCourse = useMutation({
+        mutationFn: () => api.delete(`/courses/${courseId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courses'] });
+            onBack();
+        }
     });
 
     if (isLoading) return <div className="flex h-screen items-center justify-center text-gray-400">Loading...</div>;
@@ -78,6 +86,16 @@ export default function CourseEditor({ courseId, onBack }) {
                     <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 text-gray-700 shadow-sm transition-all">
                         <Eye size={16} /> Preview
                     </button>
+                    <button
+                        onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this ENTIRE course? This action cannot be undone.')) {
+                                deleteCourse.mutate();
+                            }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-bold text-red-600 shadow-sm transition-all"
+                    >
+                        <Trash2 size={16} /> Delete Course
+                    </button>
                 </div>
             </div>
 
@@ -110,9 +128,12 @@ export default function CourseEditor({ courseId, onBack }) {
                     </div>
 
                     {/* Image Upload Box */}
-                    <div className="w-64 h-40 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#b8594d] hover:text-[#b8594d] transition-all cursor-pointer relative group">
-                        {course.image ? (
-                            <img src={course.image} alt="Cover" className="w-full h-full object-cover rounded-xl" />
+                    <div
+                        className="w-64 h-40 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#b8594d] hover:text-[#b8594d] transition-all cursor-pointer relative group overflow-hidden"
+                        onClick={() => document.getElementById('course-thumbnail-upload').click()}
+                    >
+                        {course.thumbnail ? (
+                            <img src={course.thumbnail} alt="Cover" className="w-full h-full object-cover" />
                         ) : (
                             <>
                                 <ImageIcon size={32} className="mb-2" />
@@ -123,6 +144,25 @@ export default function CourseEditor({ courseId, onBack }) {
                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button className="p-1 bg-white rounded shadow text-gray-600 hover:text-blue-600"><UploadCloud size={14} /></button>
                         </div>
+                        <input
+                            id="course-thumbnail-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                try {
+                                    const { data } = await api.post('/upload', formData);
+                                    handleSave('thumbnail', data.url);
+                                } catch (err) {
+                                    console.error("Failed to upload thumbnail", err);
+                                    alert("Failed to upload image.");
+                                }
+                            }}
+                        />
                     </div>
                 </div>
 

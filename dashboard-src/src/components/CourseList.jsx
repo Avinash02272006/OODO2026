@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Plus, Search, Users, Clock, FileText, LayoutGrid, List, X, MoreVertical, Star, Share2, BarChart2
+    Plus, Search, Users, Clock, FileText, LayoutGrid, List, X, MoreVertical, Star, Share2, BarChart2, Trash2
 } from 'lucide-react';
 import { api } from '../api';
 
@@ -26,10 +26,27 @@ export default function CourseList({ onSelectCourse }) {
         }
     });
 
+    const deleteCourseMutation = useMutation({
+        mutationFn: (id) => api.delete(`/courses/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courses'] });
+        }
+    });
+
     const filteredCourses = courses.filter(c =>
         c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.tags?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleShare = (e, courseId) => {
+        e.stopPropagation();
+        const url = `${window.location.origin}/course/${courseId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Course link copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    };
 
     if (isLoading) return (
         <div className="flex items-center justify-center h-full text-text-secondary font-medium animate-pulse">
@@ -88,6 +105,23 @@ export default function CourseList({ onSelectCourse }) {
                                         <div className="h-48 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
                                             {course.image && <img src={course.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Thumbnail" />}
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (window.confirm('Are you sure you want to delete this course?')) {
+                                                        deleteCourseMutation.mutate(course.id);
+                                                    }
+                                                }}
+                                                className="absolute top-4 right-4 p-2 bg-red-500/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleShare(e, course.id)}
+                                                className="absolute top-4 right-14 p-2 bg-white/80 hover:bg-white text-primary rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10 border border-border"
+                                            >
+                                                <Share2 size={16} />
+                                            </button>
                                         </div>
                                         <div className="p-5 flex-1 flex flex-col">
                                             <h3 className="text-lg font-bold text-text-main mb-2 line-clamp-2 leading-tight">{course.title}</h3>
@@ -138,7 +172,20 @@ export default function CourseList({ onSelectCourse }) {
 
                                         {/* Actions */}
                                         <div className="flex flex-col gap-2 shrink-0">
-                                            <button className="px-6 py-1.5 border border-border rounded-lg text-text-main text-xs font-bold hover:bg-bg-body transition-colors uppercase tracking-wider">
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm('Are you sure you want to delete this course?')) {
+                                                        deleteCourseMutation.mutate(course.id);
+                                                    }
+                                                }}
+                                                className="px-6 py-1.5 border border-red-500/20 text-red-500 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-colors uppercase tracking-wider"
+                                            >
+                                                Delete
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleShare(e, course.id)}
+                                                className="px-6 py-1.5 border border-border rounded-lg text-text-main text-xs font-bold hover:bg-bg-body transition-colors uppercase tracking-wider"
+                                            >
                                                 Share
                                             </button>
                                             <button

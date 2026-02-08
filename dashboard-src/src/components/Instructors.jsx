@@ -5,23 +5,36 @@ import { api } from '../api';
 
 export default function Instructors() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('All Roles');
+    const [openMenuId, setOpenMenuId] = useState(null);
     const queryClient = useQueryClient();
 
-    // Mock functionality - backend might need an endpoint for listing users
-    // Current server.js doesn't have a general "list users" endpoint.
-    // I should add one to server.js or just show a mock UI for now.
-    // Given the constraints, I'll add the endpoint to server.js in a later step if needed, 
-    // but for now I'll mock the data in the UI to ensure it looks good.
+    const { data: users = [], isLoading } = useQuery({
+        queryKey: ['users'],
+        queryFn: () => api.get('/api/users').then(res => res.data)
+    });
 
-    // Actually, server.js has `GET /api/analytics/teacher` which counts users.
-    // I'll assume we can add `GET /api/users` later.
-    // Let's use a mock list for the UI demonstration.
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => api.patch(`/api/users/${id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            setOpenMenuId(null);
+        }
+    });
 
-    const mockUsers = [
-        { id: 1, name: 'Admin User', email: 'admin@learnsphere.com', role: 'admin', status: 'active' },
-        { id: 2, name: 'John Doe', email: 'john@example.com', role: 'teacher', status: 'active' },
-        { id: 3, name: 'Jane Smith', email: 'jane@example.com', role: 'teacher', status: 'on_leave' },
-    ];
+    const deleteMutation = useMutation({
+        mutationFn: (id) => api.delete(`/api/users/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            setOpenMenuId(null);
+        }
+    });
+
+    const filteredUsers = users.filter(u => {
+        const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesRole = roleFilter === 'All Roles' || u.role.toLowerCase() === roleFilter.toLowerCase();
+        return matchesSearch && matchesRole;
+    });
 
     return (
         <div className="flex flex-col h-full bg-bg-body font-sans p-8">
@@ -49,10 +62,15 @@ export default function Instructors() {
                     />
                 </div>
                 <div className="flex gap-2">
-                    <select className="px-4 py-2 border border-border rounded-lg text-sm outline-none focus:border-primary bg-bg-body">
+                    <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        className="px-4 py-2 border border-border rounded-lg text-sm outline-none focus:border-primary bg-bg-body"
+                    >
                         <option>All Roles</option>
                         <option>Admin</option>
                         <option>Teacher</option>
+                        <option>User</option>
                     </select>
                 </div>
             </div>
@@ -69,7 +87,11 @@ export default function Instructors() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {mockUsers.map((user) => (
+                        {isLoading ? (
+                            <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-400">Loading staff members...</td></tr>
+                        ) : filteredUsers.length === 0 ? (
+                            <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-400">No members found.</td></tr>
+                        ) : filteredUsers.map((user) => (
                             <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
@@ -86,8 +108,8 @@ export default function Instructors() {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${user.role === 'admin'
-                                            ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                        : 'bg-blue-50 text-blue-700 border-blue-200'
                                         }`}>
                                         <Shield size={12} />
                                         {user.role.toUpperCase()}
@@ -97,19 +119,54 @@ export default function Instructors() {
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${user.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
                                         }`}>
                                         <div className={`w-2 h-2 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                                        {user.status === 'active' ? 'Active' : 'On Leave'}
+                                        {user.status === 'active' ? 'Active' : (user.status === 'on_leave' ? 'On Leave' : 'Suspended')}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-right">
-                                    <button className="p-2 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                <td className="px-6 py-4 text-right relative">
+                                    <button
+                                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                                        className="p-2 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-700 transition-colors"
+                                    >
                                         <MoreVertical size={18} />
                                     </button>
+
+                                    {openMenuId === user.id && (
+                                        <div className="absolute right-6 top-12 w-48 bg-white rounded-xl shadow-2xl border border-border z-50 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <button
+                                                onClick={() => updateMutation.mutate({ id: user.id, data: { role: user.role === 'admin' ? 'teacher' : 'admin' } })}
+                                                className="w-full px-4 py-2.5 text-left text-xs font-bold text-text-main hover:bg-gray-50 flex items-center gap-2"
+                                            >
+                                                <Shield size={14} className="text-primary" />
+                                                Switch to {user.role === 'admin' ? 'Teacher' : 'Admin'}
+                                            </button>
+                                            <button
+                                                onClick={() => updateMutation.mutate({ id: user.id, data: { status: user.status === 'active' ? 'on_leave' : 'active' } })}
+                                                className="w-full px-4 py-2.5 text-left text-xs font-bold text-text-main hover:bg-gray-50 flex items-center gap-2"
+                                            >
+                                                <UserCheck size={14} className="text-blue-500" />
+                                                Toggle Status
+                                            </button>
+                                            <div className="h-px bg-border my-1" />
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm('Delete this user account?')) {
+                                                        deleteMutation.mutate(user.id);
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                            >
+                                                <Trash2 size={14} />
+                                                Delete Member
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
+            {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
         </div>
     );
 }

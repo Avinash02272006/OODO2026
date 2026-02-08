@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, LogOut, Clock, ChevronRight, Award, Trophy, Star, BookOpen, Check, Sparkles } from 'lucide-react';
 import { api } from '../api';
 
-export default function LearnerDashboard({ user, logout, onPlayCourse }) {
+export default function LearnerDashboard({ user, logout, onPlayCourse, onProfileClick, onHomeClick }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [aiInsights, setAiInsights] = useState({}); // Track which courses have insights open
 
@@ -29,17 +29,26 @@ export default function LearnerDashboard({ user, logout, onPlayCourse }) {
         <div className="flex h-screen bg-[#1a1614] font-sans overflow-hidden text-white">
             <div className="flex-1 flex flex-col relative h-full">
                 <header className="h-16 bg-white/5 border-b border-white/5 backdrop-blur-md flex items-center justify-between px-8 z-20 shrink-0">
-                    <div className="font-bold text-lg tracking-tight text-white/90 font-serif italic">
-                        Company Name
+                    <div
+                        className="font-bold text-lg tracking-tight text-white/90 font-serif italic cursor-pointer hover:text-white transition-colors"
+                        onClick={onHomeClick}
+                    >
+                        LearnSphere
                     </div>
                     <div className="flex items-center gap-6">
-                        <div className="text-right hidden md:block">
-                            <div className="text-sm font-bold text-white mb-0.5">{isGuest ? 'Guest User' : user.name}</div>
+                        <div
+                            className="text-right hidden md:block cursor-pointer group"
+                            onClick={onProfileClick}
+                        >
+                            <div className="text-sm font-bold text-white mb-0.5 group-hover:text-amber-500 transition-colors">{isGuest ? 'Guest User' : user.name}</div>
                             {!isGuest && <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest leading-none">Logged In</div>}
                         </div>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-lg border-2 border-white/10 relative overflow-hidden group cursor-pointer
-                            ${isGuest ? 'bg-gray-700' : 'bg-gradient-to-br from-[#b8594d] to-[#a04e43]'}`}>
-                            {isGuest ? 'G' : user.name.charAt(0)}
+                        <div
+                            onClick={onProfileClick}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-lg border-2 border-white/10 relative overflow-hidden group cursor-pointer
+                            ${isGuest ? 'bg-gray-700' : 'bg-gradient-to-br from-[#b8594d] to-[#a04e43]'}`}
+                        >
+                            {isGuest ? 'G' : (user.avatar ? <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" /> : user.name.charAt(0))}
                             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         </div>
                         <button onClick={logout} className="text-gray-500 hover:text-white transition-colors" title="Logout">
@@ -78,8 +87,8 @@ export default function LearnerDashboard({ user, logout, onPlayCourse }) {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredCourses.map((course, index) => {
-                                const isEnrolled = !isGuest; // Mock enrollment logic
-                                const isStarted = index % 2 === 0; // Mock progress logic
+                                const isEnrolled = course.isEnrolled;
+                                const isStarted = course.progress > 0;
                                 const isPaid = course.price && course.price > 0;
 
                                 return (
@@ -173,7 +182,13 @@ export default function LearnerDashboard({ user, logout, onPlayCourse }) {
                 <aside className="w-[340px] bg-[#1a1614] border-l border-white/10 h-full flex flex-col shrink-0 z-30 shadow-2xl relative">
                     <div className="p-8 border-b border-white/5">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-medium text-white italic" style={{ fontFamily: 'serif' }}>My profile</h2>
+                            <h2
+                                className="text-xl font-medium text-white italic cursor-pointer hover:text-primary transition-colors"
+                                style={{ fontFamily: 'serif' }}
+                                onClick={onProfileClick}
+                            >
+                                My profile
+                            </h2>
                         </div>
 
                         <div className="relative flex flex-col items-center justify-center mb-8">

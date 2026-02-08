@@ -24,7 +24,14 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
     // Mutation for Create/Update
     const mutation = useMutation({
         mutationFn: (data) => {
-            const payload = { ...data, type: data.category }; // backend expects 'type' but we use category for UI
+            const payload = {
+                title: data.title,
+                type: data.category, // backend expects 'type' but we use category for UI
+                contentUrl: data.content_url,
+                duration: data.duration,
+                allowDownload: !!data.allow_download,
+                description: data.description
+            };
             if (lesson) {
                 return api.put(`/lessons/${lesson.id}`, payload);
             } else {

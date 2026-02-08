@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api';
 import {
     Users, Clock, PlayCircle, CheckCircle, ChevronDown, ListFilter,
     Search, MoreHorizontal, ArrowUpDown
@@ -26,17 +28,30 @@ export default function AdminOverview() {
 
     const toggleColumn = (key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
 
-    // Mock Data
-    const allUsers = [
-        { id: 1, course: 'Basics of Odoo CRM', participant: 'Salman Khan', enrolled: 'Feb 14, 2026', start: 'Feb 16, 2026', time: '2:20', completion: 30, completedDate: '-', status: 'In Progress' },
-        { id: 2, course: 'Advanced Sales', participant: 'John Doe', enrolled: 'Feb 10, 2026', start: '-', time: '0:00', completion: 0, completedDate: '-', status: 'Yet to Start' },
-        { id: 3, course: 'Inventory Management', participant: 'Jane Smith', enrolled: 'Feb 12, 2026', start: 'Feb 13, 2026', time: '5:45', completion: 100, completedDate: 'Feb 20, 2026', status: 'Completed' },
-        { id: 4, course: 'Basics of Odoo CRM', participant: 'Alice Brown', enrolled: 'Feb 15, 2026', start: 'Feb 17, 2026', time: '1:10', completion: 45, completedDate: '-', status: 'In Progress' },
-        { id: 5, course: 'Website Builder', participant: 'Bob White', enrolled: 'Feb 01, 2026', start: '-', time: '0:00', completion: 0, completedDate: '-', status: 'Yet to Start' },
-        { id: 6, course: 'Accounting 101', participant: 'Charlie Green', enrolled: 'Jan 20, 2026', start: '-', time: '0:00', completion: 0, completedDate: '-', status: 'Yet to Start' },
-        { id: 7, course: 'HR Management', participant: 'Diana Prince', enrolled: 'Feb 05, 2026', start: '-', time: '0:00', completion: 0, completedDate: '-', status: 'Yet to Start' },
-        { id: 8, course: 'Project Management', participant: 'Evan Wright', enrolled: 'Feb 11, 2026', start: '-', time: '0:00', completion: 0, completedDate: '-', status: 'Yet to Start' },
-    ];
+    // Fetch Enrollments
+    const { data: enrollments = [], isLoading } = useQuery({
+        queryKey: ['analytics-enrollments'],
+        queryFn: () => api.get('/analytics/enrollments').then(res => res.data)
+    });
+
+    // Transform Data
+    const allUsers = enrollments.map(e => {
+        let status = 'Yet to Start';
+        if (e.status === 'completed' || e.progressPercent === 100) status = 'Completed';
+        else if (e.progressPercent > 0) status = 'In Progress';
+
+        return {
+            id: e.id,
+            course: e.course.title,
+            participant: e.user.name,
+            enrolled: new Date(e.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            start: e.progressPercent > 0 ? new Date(e.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-',
+            time: '-', // Time tracking not yet implemented
+            completion: Math.round(e.progressPercent || 0),
+            completedDate: e.completedAt ? new Date(e.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-',
+            status
+        };
+    });
 
     // Filter Logic
     const filteredUsers = allUsers.filter(user => {
