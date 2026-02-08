@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create interceptor for Unified Auth Strategy
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: 'http://localhost:3000/api',
 });
 
 // Automatically inject JWT from localStorage
@@ -29,4 +29,5 @@ api.interceptors.response.use(
     }
 );
 
+export { api };
 export default api;

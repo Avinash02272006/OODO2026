@@ -4,7 +4,7 @@ import {
     ArrowLeft, UploadCloud, Eye, Plus, MoreVertical,
     Video, FileText, Image as ImageIcon, HelpCircle, X, Check
 } from 'lucide-react';
-import { api } from '../api'; // Adjusted import path based on file structure (src/api.js)
+import { api } from '../api';
 import ContentWizard from './ContentWizard';
 import QuizWizard from './QuizWizard';
 
@@ -17,15 +17,20 @@ export default function CourseEditor({ courseId, onBack }) {
     const queryClient = useQueryClient();
 
     // Fetch Course Data
-    const { data: course, isLoading } = useQuery(['course', courseId], () => api.get(`/courses/${courseId}`).then(res => res.data));
-
-    // Mutations
-    const updateCourse = useMutation((data) => api.put(`/courses/${courseId}`, data), {
-        onSuccess: () => queryClient.invalidateQueries(['course', courseId])
+    const { data: course, isLoading } = useQuery({
+        queryKey: ['course', courseId],
+        queryFn: () => api.get(`/courses/${courseId}`).then(res => res.data)
     });
 
-    const deleteLesson = useMutation((id) => api.delete(`/lessons/${id}`), {
-        onSuccess: () => queryClient.invalidateQueries(['course', courseId])
+    // Mutations
+    const updateCourse = useMutation({
+        mutationFn: (data) => api.put(`/courses/${courseId}`, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+    });
+
+    const deleteLesson = useMutation({
+        mutationFn: (id) => api.delete(`/lessons/${id}`),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['course', courseId] })
     });
 
     if (isLoading) return <div className="flex h-screen items-center justify-center text-gray-400">Loading...</div>;
@@ -48,7 +53,19 @@ export default function CourseEditor({ courseId, onBack }) {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all hidden md:block">
+                        New
+                    </button>
+                    <div className="h-6 w-px bg-gray-300 hidden md:block" />
+                    <button className="px-4 py-2 bg-[#1a1614] text-white rounded-lg text-sm font-bold hover:bg-black shadow-sm transition-all">
+                        Contact Attendees
+                    </button>
+                    <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
+                        Add Attendees
+                    </button>
+                    <div className="h-6 w-px bg-gray-300 hidden md:block mx-1" />
+
                     <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
                         <span className="text-sm font-medium text-gray-600">Publish on website</span>
                         <button
@@ -89,15 +106,7 @@ export default function CourseEditor({ courseId, onBack }) {
                                 placeholder="Add tags..."
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Responsible</label>
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                                    AJ
-                                </div>
-                                <span className="text-sm text-gray-600">Admin User</span>
-                            </div>
-                        </div>
+
                     </div>
 
                     {/* Image Upload Box */}
@@ -124,8 +133,8 @@ export default function CourseEditor({ courseId, onBack }) {
                             key={tab}
                             onClick={() => setActiveTab(tab.toLowerCase())}
                             className={`px-6 py-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === tab.toLowerCase()
-                                    ? 'border-[#b8594d] text-[#b8594d]'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                ? 'border-[#b8594d] text-[#b8594d]'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             {tab}
@@ -198,72 +207,94 @@ export default function CourseEditor({ courseId, onBack }) {
                     )}
 
                     {activeTab === 'options' && (
-                        <div className="max-w-3xl mx-auto space-y-8">
-                            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-gray-800 mb-6 border-b border-gray-100 pb-2">Access Rights</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 p-4">
+                            {/* Left Column: Access Rights */}
+                            <div className="space-y-8">
+                                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">Access Course Rights</h3>
 
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-3 items-center">
-                                        <label className="text-sm font-medium text-gray-600">Show course to</label>
-                                        <div className="col-span-2">
-                                            <select
-                                                value={course.visibility}
-                                                onChange={(e) => handleSave('visibility', e.target.value)}
-                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-[#b8594d]"
-                                            >
-                                                <option value="everyone">Everyone</option>
-                                                <option value="signed_in">Signed In Users</option>
-                                            </select>
-                                        </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Show course to</label>
+                                        <select
+                                            value={course.visibility || 'everyone'}
+                                            onChange={(e) => handleSave('visibility', e.target.value)}
+                                            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg outline-none focus:border-[#b8594d] transition-colors"
+                                        >
+                                            <option value="everyone">Everyone</option>
+                                            <option value="signed_in">Signed In Users</option>
+                                        </select>
+                                        <p className="text-xs text-gray-400 mt-1 italic">
+                                            Define who can access your courses and their content.
+                                        </p>
                                     </div>
 
-                                    <div className="grid grid-cols-3 items-start">
-                                        <label className="text-sm font-medium text-gray-600 pt-1">Access rules</label>
-                                        <div className="col-span-2 space-y-3">
-                                            {['open', 'invite', 'payment'].map(type => (
-                                                <label key={type} className="flex items-center gap-3 cursor-pointer group">
-                                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${course.access_type === type ? 'border-[#b8594d]' : 'border-gray-300'}`}>
-                                                        {course.access_type === type && <div className="w-2.5 h-2.5 bg-[#b8594d] rounded-full" />}
-                                                    </div>
-                                                    <input
-                                                        type="radio"
-                                                        name="access_type"
-                                                        value={type}
-                                                        checked={course.access_type === type}
-                                                        onChange={(e) => handleSave('access_type', e.target.value)}
-                                                        className="hidden"
-                                                    />
-                                                    <span className="text-gray-700 capitalize">{type === 'payment' ? 'On Payment' : type}</span>
-                                                </label>
-                                            ))}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-3">Access rules</label>
+                                        <p className="text-xs text-gray-400 mb-3 -mt-2 italic">
+                                            Defines how people can access/enroll to your courses.
+                                        </p>
 
-                                            {course.access_type === 'payment' && (
-                                                <div className="ml-8 animate-in fade-in slide-in-from-top-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-bold text-gray-500">Price:</span>
+                                        <div className="space-y-3">
+                                            {[
+                                                { id: 'open', label: 'Open' },
+                                                { id: 'invite', label: 'On Invitation' },
+                                                { id: 'payment', label: 'On Payment' }
+                                            ].map((rule) => (
+                                                <div key={rule.id} className="flex items-center gap-3">
+                                                    <label className="flex items-center gap-3 cursor-pointer group">
+                                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${course.accessRule === rule.id ? 'bg-[#b8594d] border-[#b8594d]' : 'bg-white border-gray-300 group-hover:border-gray-400'}`}>
+                                                            {course.accessRule === rule.id && <Check size={14} className="text-white" />}
+                                                        </div>
                                                         <input
-                                                            type="number"
-                                                            defaultValue={course.price}
-                                                            onBlur={(e) => handleSave('price', parseFloat(e.target.value))}
-                                                            className="w-32 border border-gray-300 rounded px-2 py-1 outline-none focus:border-[#b8594d]"
+                                                            type="radio"
+                                                            name="accessRule"
+                                                            value={rule.id}
+                                                            checked={course.accessRule === rule.id}
+                                                            onChange={(e) => handleSave('accessRule', e.target.value)}
+                                                            className="hidden"
                                                         />
-                                                    </div>
+                                                        <span className="text-sm font-medium text-gray-700">{rule.label}</span>
+                                                    </label>
+
+                                                    {/* Price Input Inline */}
+                                                    {rule.id === 'payment' && course.accessRule === 'payment' && (
+                                                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                                                            <span className="text-sm font-bold text-gray-500">Price:</span>
+                                                            <input
+                                                                type="number"
+                                                                defaultValue={course.price}
+                                                                onBlur={(e) => handleSave('price', parseFloat(e.target.value))}
+                                                                className="w-24 p-1 text-sm border-b border-gray-300 focus:border-[#b8594d] outline-none bg-transparent"
+                                                                placeholder="0.00"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-gray-800 mb-6 border-b border-gray-100 pb-2">Responsible</h3>
-                                <div className="grid grid-cols-3 items-center">
-                                    <label className="text-sm font-medium text-gray-600">Course Admin</label>
-                                    <div className="col-span-2">
-                                        <select className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-[#b8594d]">
-                                            <option>Admin User</option>
-                                        </select>
-                                    </div>
+                            {/* Right Column: Responsible */}
+                            <div className="space-y-8">
+                                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">Responsible</h3>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Course Admin</label>
+                                    <select
+                                        value={course.adminId || ''}
+                                        onChange={(e) => handleSave('adminId', e.target.value)}
+                                        className="w-full p-2.5 bg-white border border-gray-300 rounded-lg outline-none focus:border-[#b8594d] transition-colors"
+                                    >
+                                        <option value="" disabled>Select Admin</option>
+                                        <option value="admin-id-1">Admin User</option>
+                                        <option value="teacher-id-1">Teacher 1</option>
+                                        <option value="teacher-id-2">Teacher 2</option>
+                                    </select>
+                                    <p className="text-xs text-gray-400 mt-1 italic">
+                                        Decide who'll be the responsible of the course.
+                                    </p>
                                 </div>
                             </div>
                         </div>

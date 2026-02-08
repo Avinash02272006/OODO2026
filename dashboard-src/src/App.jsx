@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     BookOpen, Users, LogOut
 } from 'lucide-react';
@@ -10,118 +10,239 @@ import Reporting from './components/Reporting';
 import CoursePlayer from './components/CoursePlayer';
 import CourseList from './components/CourseList';
 import LearnerDashboard from './components/LearnerDashboard';
+import Instructors from './components/Instructors';
+import AdminOverview from './components/AdminOverview';
+import Sidebar from './components/Sidebar';
 
 const queryClient = new QueryClient();
 
+// Error Boundary
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null, errorInfo: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("Uncaught error:", error, errorInfo);
+        this.setState({ error, errorInfo });
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-8 text-center font-sans">
+                    <h1 className="text-3xl font-bold text-red-600 mb-4">Something went wrong 🚨</h1>
+                    <div className="bg-white p-6 rounded-lg shadow-xl border border-red-200 max-w-2xl w-full text-left overflow-auto">
+                        <p className="font-bold text-gray-800 mb-2">{this.state.error?.toString()}</p>
+                        <pre className="text-xs text-red-500 bg-red-50 p-4 rounded overflow-x-auto whitespace-pre-wrap">
+                            {this.state.errorInfo?.componentStack}
+                        </pre>
+                    </div>
+                    <div className="mt-8 flex gap-4 justify-center">
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="px-6 py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-black transition-all"
+                        >
+                            Reload Page
+                        </button>
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('user');
+                                localStorage.removeItem('token');
+                                window.location.reload();
+                            }}
+                            className="px-6 py-3 border border-gray-300 bg-white text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-all"
+                        >
+                            Reset Login & Reload
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 // ----------------------------------------------------
 // MODERN LOGIN SCREEN
-// ----------------------------------------------------
 function LoginScreen({ onLoginSuccess }) {
-    const [mode, setMode] = useState('login');
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [mode, setMode] = useState('login'); // 'login' | 'signup'
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Filter out potential non-admin users for demo quick access
-    // ...
-
-    const styles = `
-        @import url('https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700;800&display=swap');
-        .login-body { font-family: 'Karla', sans-serif; background: #1a1614; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
-        .login-container { display: grid; grid-template-columns: 1fr 1fr; background: #f5f0e8; width: 100%; height: 100vh; overflow: hidden; }
-        .left-panel { background: linear-gradient(135deg, #b8594d 0%, #a04e43 50%, #8b4339 100%); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .glass-container { width: 400px; padding: 40px; background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); border-radius: 24px; border: 2px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; align-items: center; z-index: 10; color: white; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-        .floating-obj { position: absolute; opacity: 0.6; animation: floatLinear 20s infinite linear; font-size: 3rem;}
-        @keyframes floatLinear { 0% { transform: translateY(110vh) rotate(0deg); } 100% { transform: translateY(-10vh) rotate(360deg); } }
-        .right-panel { display: flex; flex-direction: column; justify-content: center; padding: 60px; background: #f5f0e8; position: relative; }
-        .input-group { width: 100%; margin-bottom: 15px; }
-        .input-group input { width: 100%; padding: 15px; background: #e8e0d5; border: 2px solid transparent; border-radius: 8px; font-family: 'Karla'; font-size: 1rem; transition: 0.3s; }
-        .input-group input:focus { border-color: #b8594d; background: white; outline: none; }
-        .btn-submit { width: 100%; padding: 15px; background: #1a1614; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .btn-submit:hover { background: #b8594d; transform: translateY(-2px); }
-        .toggle-link { color: #b8594d; font-weight: 700; cursor: pointer; margin-left: 5px; }
-        
-        @media (max-width: 768px) {
-            .login-container { grid-template-columns: 1fr; }
-            .left-panel { display: none; }
+    // Validation Logic
+    const validate = () => {
+        if (mode === 'signup') {
+            if (!formData.name) return "Name is required";
+            if (!formData.email.includes('@')) return "Invalid Email";
+            if (formData.password.length < 8) return "Password must be > 8 chars";
+            if (!/[A-Z]/.test(formData.password)) return "Password must have an uppercase letter";
+            if (!/[a-z]/.test(formData.password)) return "Password must have a lowercase letter";
+            if (!/[!@#$%^&*]/.test(formData.password)) return "Password must have a special character";
+            if (formData.password !== formData.confirmPassword) return "Passwords do not match";
         }
-    `;
+        return null;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
         setError('');
+
+        const validationError = validate();
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
+        setLoading(true);
         try {
             if (mode === 'signup') {
-                if (password !== confirmPassword) throw new Error("Passwords mismatch");
-                const { data } = await api.post('/register', { name, email, password });
+                const { data } = await api.post('/register', {
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password
+                });
+                // Auto login after signup or wait? wireframe implies landing on signup page. 
+                // Let's auto-login for UX.
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
                 onLoginSuccess(data.user);
             } else {
-                const { data } = await api.post('/login', { email, password });
+                const { data } = await api.post('/login', {
+                    email: formData.email,
+                    password: formData.password
+                });
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
                 onLoginSuccess(data.user);
             }
         } catch (err) {
-            setError(err.response?.data?.detail || err.message || "Authentication Failed");
+            setError(err.response?.data?.error || "Authentication Failed");
         } finally {
             setLoading(false);
         }
     };
 
-    return (
-        <div className="login-body">
-            <style>{styles}</style>
-            <div className="login-container">
-                {/* Left Panel */}
-                <div className="left-panel">
-                    <div className="floating-obj" style={{ left: '10%', animationDelay: '0s' }}>✏️</div>
-                    <div className="floating-obj" style={{ left: '80%', animationDelay: '-5s' }}>📐</div>
-                    <div className="glass-container">
-                        <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 text-4xl shadow-lg border-2 border-white/30">🚀</div>
-                        <h1 className="text-3xl font-bold mb-2">LearnSphere</h1>
-                        <p className="opacity-80">Industrial Application for Next-Gen Learning</p>
-                    </div>
-                </div>
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-                {/* Right Panel */}
-                <div className="right-panel">
-                    <div className="max-w-md w-full mx-auto">
-                        <h2 className="text-4xl font-black text-[#1a1614] mb-2">{mode === 'login' ? 'Welcome Back!' : 'Join the Revolution'}</h2>
-                        <form onSubmit={handleSubmit}>
-                            {mode === 'signup' && (
-                                <div className="input-group"><input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required /></div>
-                            )}
-                            <div className="input-group"><input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required /></div>
-                            <div className="input-group"><input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required /></div>
-                            {mode === 'signup' && (
-                                <div className="input-group"><input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required /></div>
-                            )}
-                            {error && <div className="text-red-500 mb-4 text-sm font-bold bg-red-100 p-3 rounded">{error}</div>}
-                            <button className="btn-submit" disabled={loading}>{loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Create Account')}</button>
-                        </form>
-                        <div className="mt-8 text-center text-gray-500 font-medium">
-                            {mode === 'login' ? (
-                                <>New here? <span onClick={() => setMode('signup')} className="toggle-link">Create Account</span></>
-                            ) : (
-                                <>Already have an account? <span onClick={() => setMode('login')} className="toggle-link">Log In</span></>
-                            )}
+    return (
+        <div className="min-h-screen bg-black text-white font-sans flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            {/* Background Decor */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none opacity-20">
+                <div className="absolute top-10 left-10 w-64 h-64 bg-primary/30 rounded-full blur-[100px]" />
+                <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px]" />
+            </div>
+
+            {/* Logo */}
+            <div className="z-10 mb-8 flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="w-16 h-16 bg-white text-black rounded-2xl flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(255,255,255,0.3)] mb-4">
+                    🚀
+                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight">LearnSphere</h1>
+            </div>
+
+            {/* Card */}
+            <div className="z-10 w-full max-w-md bg-[#0a0a0a] border border-white/20 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+                <h2 className="text-xl font-bold mb-6 text-center tracking-wide uppercase border-b border-white/10 pb-4 text-gray-400">
+                    {mode === 'login' ? 'Login Page' : 'Sign up Page'}
+                </h2>
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {mode === 'signup' && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Enter Name</label>
+                            <input
+                                name="name"
+                                type="text"
+                                placeholder="John Doe"
+                                value={formData.name}
+                                onChange={handleChange}
+                                className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-700 outline-none focus:border-white transition-colors"
+                            />
                         </div>
-                        {/* Demo Links */}
-                        <div className="mt-6 pt-6 border-t border-gray-200 text-xs text-gray-400 text-center">
-                            <p className="mb-2 uppercase tracking-wide font-bold text-gray-300">Quick Access (Demo)</p>
-                            <div className="flex justify-center gap-4">
-                                <span onClick={() => { setEmail('admin@learnsphere.com'); setPassword('password') }} className="cursor-pointer hover:text-[#b8594d] transition-colors">Admin</span>
-                                <span>|</span>
-                                <span onClick={() => onLoginSuccess({ name: 'Guest', role: 'guest' })} className="cursor-pointer hover:text-[#b8594d] transition-colors">Browse as Guest</span>
-                            </div>
-                        </div>
+                    )}
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">{mode === 'signup' ? 'Enter Email Id' : 'Email'}</label>
+                        <input
+                            name="email"
+                            type="email"
+                            placeholder="name@example.com"
+                            value={formData.email}
+                            onChange={handleChange}
+                            className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-700 outline-none focus:border-white transition-colors"
+                        />
                     </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">{mode === 'signup' ? 'Enter Password' : 'Password'}</label>
+                        <input
+                            name="password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-700 outline-none focus:border-white transition-colors"
+                        />
+                    </div>
+
+                    {mode === 'signup' && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Re-Enter Password</label>
+                            <input
+                                name="confirmPassword"
+                                type="password"
+                                placeholder="••••••••"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                className="w-full bg-black border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-700 outline-none focus:border-white transition-colors"
+                            />
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="text-red-400 text-xs font-bold bg-red-900/20 p-3 rounded border border-red-900/50 flex items-center gap-2">
+                            ⚠️ {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-white text-black font-black uppercase tracking-widest py-3 rounded-lg hover:bg-gray-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] disabled:opacity-50"
+                    >
+                        {loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Sign Up')}
+                    </button>
+                </form>
+
+                <div className="mt-6 flex justify-between items-center text-xs text-gray-500 font-medium">
+                    {mode === 'login' ? (
+                        <>
+                            <button className="hover:text-white transition-colors">Forgot Password?</button>
+                            <span className="text-gray-700">|</span>
+                            <button onClick={() => setMode('signup')} className="hover:text-white transition-colors uppercase font-bold">Sign Up</button>
+                        </>
+                    ) : (
+                        <div className="w-full text-center">
+                            Already have an account? <button onClick={() => setMode('login')} className="text-white hover:underline uppercase font-bold ml-1">Sign In</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Quick Demo Access (Hidden but available for testing) */}
+            <div className="mt-12 opacity-30 hover:opacity-100 transition-opacity">
+                <p className="text-[10px] text-center text-gray-600 uppercase tracking-widest mb-2">Dev Shortcuts</p>
+                <div className="flex gap-4">
+                    <button onClick={() => { setMode('login'); setFormData({ email: 'admin@learnsphere.com', password: 'password' }); }} className="text-xs text-gray-500 hover:text-white">Admin</button>
+                    <button onClick={() => onLoginSuccess({ name: 'Guest', role: 'guest' })} className="text-xs text-gray-500 hover:text-white">Guest</button>
                 </div>
             </div>
         </div>
@@ -132,66 +253,55 @@ function LoginScreen({ onLoginSuccess }) {
 // ADMIN DASHBOARD
 // ----------------------------------------------------
 function AdminDashboard({ user, logout }) {
-    const [activeTab, setActiveTab] = useState('courses');
+    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'overview' | 'reporting' | 'instructors'
     const [selectedCourse, setSelectedCourse] = useState(null);
 
-    const adminStyles = `
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        .admin-layout { display: flex; font-family: 'Plus Jakarta Sans', sans-serif; background: #f8f6f2; height: 100vh; overflow: hidden; }
-        .sidebar { width: 260px; background: #1a1614; color: #f5f0e8; display: flex; flex-direction: column; padding: 24px 0; border-right: 1px solid rgba(255,255,255,0.05); }
-        .logo-area { padding: 0 24px; margin-bottom: 32px; display: flex; items-center; gap: 12px; font-weight: 800; font-size: 1.25rem; }
-        .nav-item { padding: 12px 24px; margin: 4px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; font-weight: 500; }
-        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
-        .nav-item.active { background: #b8594d; color: white; font-weight: 600; box-shadow: 0 4px 12px rgba(184,89,77,0.4); }
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .header { height: 72px; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; z-index: 10; }
-    `;
+    // Mock theme toggle (or implement context)
+    const [theme, setTheme] = useState('dark');
+    const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [theme]);
 
     if (selectedCourse) {
         return <CourseEditor courseId={selectedCourse} onBack={() => setSelectedCourse(null)} />;
     }
 
+    let viewTitle = 'Course Management';
+    if (activeTab === 'overview') viewTitle = 'Dashboard Overview';
+    if (activeTab === 'reporting') viewTitle = 'Analytics & Reporting';
+    if (activeTab === 'instructors') viewTitle = 'Staff Management';
+
     return (
-        <div className="admin-layout">
-            <style>{adminStyles}</style>
+        <div className="flex h-screen bg-bg-body overflow-hidden font-sans transition-colors duration-500">
+            <Sidebar
+                activeView={activeTab}
+                setActiveView={setActiveTab}
+                user={user}
+                logout={logout}
+                theme={theme}
+                toggleTheme={toggleTheme}
+            />
 
-            <aside className="sidebar">
-                <div className="logo-area">
-                    <div className="w-8 h-8 bg-[#b8594d] rounded-lg flex items-center justify-center text-white"><BookOpen size={18} /></div>
-                    Learn<span className="text-[#b8594d]">Sphere</span>
-                </div>
-                <div className="text-[10px] uppercase font-bold text-gray-500 px-6 mb-2 tracking-widest">Main Menu</div>
-                <div className={`nav-item ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => setActiveTab('courses')}>
-                    <BookOpen size={18} /> Courses
-                </div>
-                <div className={`nav-item ${activeTab === 'reporting' ? 'active' : ''}`} onClick={() => setActiveTab('reporting')}>
-                    <Users size={18} /> Reporting
-                </div>
-                <div className="mt-auto px-6 pt-6 pb-6 border-t border-white/10 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#b8594d] rounded-full flex items-center justify-center font-bold text-white border-2 border-white/10 shrink-0">{user.name.charAt(0)}</div>
+            <div className="flex-1 flex flex-col min-w-0 transition-colors duration-500">
+                <header className="h-16 bg-bg-surface/80 backdrop-blur-md border-b border-border flex items-center justify-between px-8 z-10 shrink-0 transition-colors duration-500">
                     <div>
-                        <div className="text-sm font-bold text-white leading-none mb-1">{user.name}</div>
-                        <div className="text-xs text-gray-500 capitalize">{user.role}</div>
+                        <h2 className="text-xl font-bold text-text-main">
+                            {viewTitle}
+                        </h2>
+                        <p className="text-sm text-text-secondary">Backoffice Control Center</p>
                     </div>
-                </div>
-            </aside>
-
-            <div className="main-content">
-                <header className="header">
-                    <div>
-                        <h2 className="text-xl font-bold text-[#1a1614]">{activeTab === 'courses' ? 'Course Management' : 'Analytics & Reporting'}</h2>
-                        <p className="text-sm text-gray-500">Backoffice Control Center</p>
-                    </div>
-                    <button onClick={logout} className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-red-500 transition-colors">
-                        <LogOut size={16} /> Sign Out
-                    </button>
                 </header>
                 <div className="flex-1 overflow-hidden relative">
-                    {activeTab === 'courses' ? (
-                        <CourseList onSelectCourse={setSelectedCourse} />
-                    ) : (
-                        <div className="p-8 h-full overflow-y-auto"><Reporting /></div>
+                    {activeTab === 'overview' && <AdminOverview />}
+                    {activeTab === 'dashboard' && <CourseList onSelectCourse={setSelectedCourse} />}
+                    {activeTab === 'reporting' && (
+                        <div className="p-8 h-full overflow-y-auto custom-scrollbar">
+                            <Reporting />
+                        </div>
                     )}
+                    {activeTab === 'instructors' && <Instructors />}
                 </div>
             </div>
         </div>
@@ -208,7 +318,14 @@ function MainApp() {
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
-        if (storedUser && token) setUser(JSON.parse(storedUser));
+        if (storedUser && token) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (e) {
+                console.error("Failed to parse user from local storage", e);
+                localStorage.removeItem("user");
+            }
+        }
     }, []);
 
     const logout = () => {
@@ -220,11 +337,11 @@ function MainApp() {
 
     if (!user) return <LoginScreen onLoginSuccess={setUser} />;
 
-    if (user.role === 'admin' || user.email.includes('admin')) {
+    if (user.role === 'admin' || (user.email && user.email.includes('admin'))) {
         return <AdminDashboard user={user} logout={logout} />;
     }
 
-    if (playingCourseId) return <CoursePlayer courseId={playingCourseId} onBack={() => setPlayingCourseId(null)} />;
+    if (playingCourseId) return <CoursePlayer courseId={playingCourseId} user={user} onBack={() => setPlayingCourseId(null)} />;
 
     return <LearnerDashboard user={user} logout={logout} onPlayCourse={setPlayingCourseId} />;
 }
@@ -232,7 +349,9 @@ function MainApp() {
 export default function App() {
     return (
         <QueryClientProvider client={queryClient}>
-            <MainApp />
+            <ErrorBoundary>
+                <MainApp />
+            </ErrorBoundary>
         </QueryClientProvider>
     );
 }

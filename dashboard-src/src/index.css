@@ -1,10 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@layer base {
+  :root {
+    /* Light Theme - Clean, Corporate, Modern */
+    --primary: #b8594d;
+    --primary-hover: #8f463d;
+    --primary-light: rgba(184, 89, 77, 0.08);
 
-body {
-    background-color: var(--tw-color-bg-body, #f8f6f2);
-    color: var(--tw-color-text-main, #1a1614);
+    --bg-body: #ffffff;
+    /* Stark White Body */
+    --bg-surface: #f8fafc;
+    /* Very subtle off-white for cards */
+    --bg-sidebar: #1e293b;
+    /* Slate 800 - Professional Dark Sidebar */
+    --bg-sidebar-text: #f8fafc;
+
+    --text-main: #0f172a;
+    /* Slate 900 - Sharp Black */
+    --text-secondary: #64748b;
+    /* Slate 500 */
+    --text-on-dark: #f8fafc;
+
+    --border: #e2e8f0;
+    /* Slate 200 */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+
+    --radius: 1rem;
+    /* Bubbly but clean */
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  [data-theme='dark'] {
+    /* Dark Theme - Deep, OLED Friendly, Neon Accents */
+    --primary: #6366f1;
+    /* Indigo 500 - Modern SaaS Primary */
+    --primary-hover: #818cf8;
+    --primary-light: rgba(99, 102, 241, 0.15);
+
+    --bg-body: #030712;
+    /* Gray 950 - Rich Black */
+    --bg-surface: #111827;
+    /* Gray 900 */
+    --bg-sidebar: #000000;
+    /* True Black Sidebar */
+    --bg-sidebar-text: #e2e8f0;
+
+    --text-main: #f8fafc;
+    /* Slate 50 */
+    --text-secondary: #94a3b8;
+    /* Slate 400 */
+    --text-on-dark: #ffffff;
+
+    --border: #1f2937;
+    /* Gray 800 */
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.7);
+  }
+
+  body {
+    @apply bg-bg-body text-text-main font-sans antialiased transition-colors duration-500 ease-in-out;
+  }
+
+}
+
+/* Custom Scrollbar Utilities */
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 99px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
+  }
+
+  .custom-scrollbar-dark::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar-dark::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 99px;
+  }
+
+  .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }

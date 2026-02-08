@@ -1,86 +1,89 @@
 import { useState } from 'react';
 import {
-    Box, Home, LayoutGrid, BarChart2, Users, Settings, LogOut, Moon, Sun, Monitor
+    Box, Home, LayoutGrid, BarChart2, Users, Settings, LogOut, Moon, Sun, Monitor, PieChart
 } from 'lucide-react';
 
-export default function Sidebar({ activeView, setActiveView, theme, toggleTheme, user }) {
+export default function Sidebar({ activeView, setActiveView, theme, toggleTheme, user, logout }) {
     const menuItems = [
+        { id: 'overview', icon: PieChart, label: 'Overview', roles: ['admin'] },
         { id: 'dashboard', icon: LayoutGrid, label: 'Courses', roles: ['admin', 'teacher'] },
         { id: 'reporting', icon: BarChart2, label: 'Reporting', roles: ['admin', 'teacher'] },
-        { id: 'instructors', icon: Users, label: 'Instructors', roles: ['admin'] }, // Admin only
+        { id: 'instructors', icon: Users, label: 'Instructors', roles: ['admin'] },
     ];
 
     const canView = (item) => item.roles.includes(user.role);
 
     return (
-        <aside className="w-[260px] h-screen bg-[#1a1614] dark:bg-black text-[#f5f0e8] flex flex-col border-r border-white/5 shrink-0 transition-all duration-300">
+        <aside className="w-[280px] h-screen bg-bg-sidebar text-bg-sidebar-text flex flex-col border-r border-border shrink-0 transition-all duration-300 font-sans shadow-2xl z-20">
             {/* Logo */}
-            <div className="p-6 mb-4 flex items-center gap-3">
-                {/* Placeholder: If logo images exist, replace this Box with img */}
-                {/* {theme === 'dark'
-             ? <img src="/logo-dark.png" alt="Dark Mode Logo" className="h-8" />
-             : <img src="/logo-light.png" alt="Light Mode Logo" className="h-8" />
-        } */}
-                {/* Fallback SVG Logo implementation based on description */}
-                <div className="w-8 h-8 bg-[#b8594d] rounded-lg flex items-center justify-center text-white">
-                    <Box size={20} />
+            <div className="p-8 pb-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                    <Box size={22} strokeWidth={2.5} />
                 </div>
-                <div className="text-xl font-bold tracking-tight">
-                    Learn<span className="text-[#b8594d]">Sphere</span>
+                <div className="text-2xl font-extrabold tracking-tight text-bg-sidebar-text">
+                    Learn<span className="text-primary">Sphere</span>
                 </div>
             </div>
 
             {/* Main Menu */}
-            <div className="px-3 mb-6">
-                <div className="text-xs uppercase tracking-widest text-white/40 mb-3 px-3 font-bold">Main Menu</div>
+            <div className="px-4 py-6 space-y-1">
+                <div className="text-[10px] uppercase tracking-widest text-text-secondary mb-4 px-4 font-bold select-none opacity-70">Main Menu</div>
                 {menuItems.filter(canView).map((item) => (
                     <button
                         key={item.id}
                         onClick={() => setActiveView(item.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all mb-1
-              ${activeView === item.id
-                                ? 'bg-[#b8594d] text-white shadow-lg shadow-[#b8594d]/40'
-                                : 'text-white/70 hover:bg-white/5 hover:text-white dark:hover:bg-white/10'
+                        className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all group relative overflow-hidden
+                            ${activeView === item.id
+                                ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                                : 'text-text-secondary hover:bg-white/5 hover:text-bg-sidebar-text'
                             }`}
                     >
-                        <item.icon size={20} />
-                        <span>{item.label}</span>
+                        <item.icon size={20} className={`transition-transform duration-300 ${activeView === item.id ? 'scale-110' : 'group-hover:scale-110'}`} />
+                        <span className="relative z-10">{item.label}</span>
+                        {activeView === item.id && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
                     </button>
                 ))}
             </div>
 
             {/* System Menu */}
-            <div className="px-3 mb-6">
-                <div className="text-xs uppercase tracking-widest text-white/40 mb-3 px-3 font-bold">System</div>
+            <div className="px-4 mt-auto mb-6 space-y-1">
+                <div className="text-[10px] uppercase tracking-widest text-text-secondary mb-4 px-4 font-bold select-none opacity-70">System</div>
                 <button
                     onClick={toggleTheme}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white mb-1"
+                    className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-white/5 hover:text-bg-sidebar-text transition-all group"
                 >
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                     <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
                 </button>
 
                 {user.role === 'admin' && (
-                    <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white mb-1">
+                    <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-white/5 hover:text-bg-sidebar-text transition-all">
                         <Settings size={20} />
                         <span>Platform Settings</span>
                     </button>
                 )}
 
-                <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white mb-1">
-                    <LogOut size={20} />
+                <button
+                    onClick={logout}
+                    className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-white/5 hover:text-danger transition-all group"
+                >
+                    <LogOut size={20} className="group-hover:translate-x-1 transition-transform" />
                     <span>Logout</span>
                 </button>
             </div>
 
-            {/* User Logic */}
-            <div className="mt-auto p-6 border-t border-white/5 flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#b8594d] rounded-full flex items-center justify-center font-bold text-white border-2 border-white/10">
-                    {user.name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                    <div className="text-sm font-semibold text-white">{user.name}</div>
-                    <div className="text-xs text-white/50">{user.label}</div>
+            {/* User Profile */}
+            <div className="p-6 border-t border-border bg-black/10 backdrop-blur-sm">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary-hover rounded-full flex items-center justify-center font-bold text-lg text-white border-2 border-white/10 shadow-lg shrink-0">
+                        {user.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-bg-sidebar-text truncate">{user.name}</div>
+                        <div className="text-xs text-text-secondary capitalize truncate">{user.role}</div>
+                    </div>
                 </div>
             </div>
         </aside>

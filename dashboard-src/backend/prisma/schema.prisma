@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native"]
 }
 
 // Using SQLite for seamless local development, easy to switch to PostgreSQL
@@ -38,6 +39,7 @@ model Course {
   slug           String        @unique // For URL-friendly access
   description    String?
   thumbnail      String?
+  tags           String?       // Comma separated tags
   status         String        @default("draft") // "draft", "published", "archived"
   
   // Access Control Rules

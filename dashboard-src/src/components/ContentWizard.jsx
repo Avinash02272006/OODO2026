@@ -13,7 +13,8 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
         allow_download: lesson?.allow_download || false,
         description: lesson?.description || '',
         additional_link: lesson?.additional_link || '',
-        additional_file_url: lesson?.additional_file_url || ''
+        additional_file_url: lesson?.additional_file_url || '',
+        responsible: lesson?.responsible || 'Admin User'
     });
 
     const queryClient = useQueryClient();
@@ -21,8 +22,8 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
     const additionalFileInputRef = useRef(null);
 
     // Mutation for Create/Update
-    const mutation = useMutation(
-        (data) => {
+    const mutation = useMutation({
+        mutationFn: (data) => {
             const payload = { ...data, type: data.category }; // backend expects 'type' but we use category for UI
             if (lesson) {
                 return api.put(`/lessons/${lesson.id}`, payload);
@@ -30,13 +31,11 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
                 return api.post(`/courses/${courseId}/lessons`, payload);
             }
         },
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries(['course', courseId]);
-                onClose();
-            }
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+            onClose();
         }
-    );
+    });
 
     const handleFileUpload = async (e, field) => {
         const file = e.target.files[0];
@@ -165,16 +164,28 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
                                                 placeholder="(Google Drive link or YouTube link)"
                                             />
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <label className="text-sm text-gray-400">Duration:</label>
-                                            <input
-                                                type="text"
-                                                value={formData.duration}
-                                                onChange={e => setFormData({ ...formData, duration: e.target.value })}
-                                                className="bg-transparent border-b border-gray-600 focus:border-blue-400 outline-none py-1 w-20 text-center text-sm"
-                                                placeholder="00:00"
-                                            />
-                                            <span className="text-sm text-gray-500">hours</span>
+                                        <div className="flex items-center gap-8">
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-sm text-gray-400">Responsible:</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.responsible}
+                                                    onChange={e => setFormData({ ...formData, responsible: e.target.value })}
+                                                    className="bg-transparent border-b border-gray-600 focus:border-blue-400 outline-none py-1 w-32 text-center text-sm"
+                                                    placeholder="Name"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-sm text-gray-400">Duration:</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.duration}
+                                                    onChange={e => setFormData({ ...formData, duration: e.target.value })}
+                                                    className="bg-transparent border-b border-gray-600 focus:border-blue-400 outline-none py-1 w-20 text-center text-sm"
+                                                    placeholder="00:00"
+                                                />
+                                                <span className="text-sm text-gray-500">hours</span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -211,10 +222,15 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
                                         </div>
 
                                         <div className="flex items-center gap-20">
-                                            {/* Responsible Field Placeholder */}
                                             <div className="flex items-center gap-2">
                                                 <label className="text-sm text-gray-400">Responsible:</label>
-                                                <div className="border-b border-gray-600 w-40 h-6"></div>
+                                                <input
+                                                    type="text"
+                                                    value={formData.responsible}
+                                                    onChange={e => setFormData({ ...formData, responsible: e.target.value })}
+                                                    className="bg-transparent border-b border-gray-600 focus:border-blue-400 outline-none py-1 w-32 text-center text-sm"
+                                                    placeholder="Name"
+                                                />
                                             </div>
 
                                             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -298,10 +314,10 @@ export default function ContentWizard({ courseId, lesson, onClose }) {
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={mutation.isLoading}
+                        disabled={mutation.isPending}
                         className="px-8 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-bold shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50"
                     >
-                        {mutation.isLoading ? 'Saving...' : 'Save Content'}
+                        {mutation.isPending ? 'Saving...' : 'Save Content'}
                     </button>
                 </div>
             </div>

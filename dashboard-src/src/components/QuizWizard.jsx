@@ -59,18 +59,7 @@ export default function QuizWizard({ courseId, quiz, onClose }) {
                 quizId = res.data.id;
             }
 
-            // Save Questions (Simple approach: loop and create. Ideally batch update or diff)
-            // For this demo, we just add new ones or update if ID exists? 
-            // The backend `add_question` is append-only in current generic implementation. 
-            // For a wizard, ideally we wipe and replace or smart update. 
-            // Let's assume we just add all for new quiz, or rely on backend to handle updates if configured.
-            // Current backend `add_question` endpoint creates NEW questions.
-            // So for editing, this might duplicate questions if not careful.
-            // Given the constraints, let's implement basic "Add New" flow robustness.
-
-            // Actually, since I didn't verify backend update logic for questions, let's focus on CREATION flow primarily.
-            // If editing, we might be just adding more questions.
-
+            // Save Questions
             for (const q of questions) {
                 if (!q.id) { // Only save new questions
                     await api.post(`/quizzes/${quizId}/questions`, q);
@@ -80,7 +69,7 @@ export default function QuizWizard({ courseId, quiz, onClose }) {
             // Save Rewards
             await api.post(`/quizzes/${quizId}/rewards`, rewards);
 
-            queryClient.invalidateQueries(['course', courseId]);
+            queryClient.invalidateQueries({ queryKey: ['course', courseId] });
             onClose();
         } catch (error) {
             console.error("Failed to save quiz", error);

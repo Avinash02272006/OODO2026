@@ -1,72 +1,101 @@
-import { PrismaClient } from '@prisma/client'
-const prisma = new PrismaClient()
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
 
 async function main() {
-    // Create Admin
-    const admin = await prisma.user.create({
-        data: {
+    const passwordHash = await bcrypt.hash('password', 10);
+
+    const admin = await prisma.user.upsert({
+        where: { email: 'admin@learnsphere.com' },
+        update: {},
+        create: {
             email: 'admin@learnsphere.com',
-            passwordHash: 'hashed_password_123', // In real app, use bcrypt
-            name: 'Alice Admin',
+            name: 'Admin User',
+            passwordHash,
             role: 'admin',
         },
-    })
+    });
 
-    // Create Teacher
-    const teacher = await prisma.user.create({
-        data: {
-            email: 'sarah@learnsphere.com',
-            passwordHash: 'hashed_password_123',
-            name: 'Sarah Teacher',
+    const instructor = await prisma.user.upsert({
+        where: { email: 'instructor@learnsphere.com' },
+        update: {},
+        create: {
+            email: 'instructor@learnsphere.com',
+            name: 'Jane Doe',
+            passwordHash,
             role: 'teacher',
         },
-    })
+    });
 
-    // Create Student
-    const student = await prisma.user.create({
-        data: {
-            email: 'john@student.com',
-            passwordHash: 'hashed_password_123',
-            name: 'John Student',
-            role: 'user',
-            points: 45,
-            rank: 'Achiever',
-        },
-    })
-
-    // Create Course by Teacher
-    const course = await prisma.course.create({
-        data: {
-            title: 'Modern Web Development',
-            slug: 'modern-web-development',
-            description: 'Learn React, Node, and more.',
+    const course1 = await prisma.course.upsert({
+        where: { slug: 'react-masterclass' },
+        update: {},
+        create: {
+            title: 'React Masterclass 2024',
+            slug: 'react-masterclass',
+            description: 'The ultimate guide to React.',
+            thumbnail: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=2070&auto=format&fit=crop',
             status: 'published',
-            adminId: teacher.id,
-            modules: {
-                create: {
-                    title: 'Introduction',
-                    lessons: {
-                        create: {
-                            title: 'Welcome to React',
-                            type: 'video',
-                            contentUrl: 'https://vimeo.com/123',
-                            basePoints: 100,
-                        }
-                    }
-                }
-            }
+            adminId: admin.id,
+            visibility: 'everyone',
+            tags: 'React,Frontend,JavaScript'
         },
-    })
+    });
 
-    console.log({ admin, teacher, student, course })
+    // Create Module and Lessons for Course 1
+    const module1 = await prisma.module.create({
+        data: {
+            title: 'Introduction to React',
+            courseId: course1.id,
+            orderIndex: 0,
+            lessons: {
+                create: [
+                    {
+                        title: 'Welcome to the Course',
+                        type: 'video',
+                        contentUrl: 'https://www.youtube.com/watch?v=Ke90Tje7VS0',
+                        description: 'Introduction to React and what we will build.',
+                        duration: 10,
+                        orderIndex: 0
+                    },
+                    {
+                        title: 'Setup Environment',
+                        type: 'document',
+                        description: 'How to install Node.js and create a React app.',
+                        duration: 15,
+                        orderIndex: 1
+                    }
+                ]
+            }
+        }
+    });
+
+
+    const course2 = await prisma.course.upsert({
+        where: { slug: 'python-backend-development' },
+        update: {},
+        create: {
+            title: 'Python Backend Development',
+            slug: 'python-backend-development',
+            description: 'Learn FastAPI and Django.',
+            thumbnail: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?q=80&w=2000&auto=format&fit=crop',
+            status: 'published',
+            adminId: instructor.id,
+            visibility: 'everyone',
+            tags: 'Python,Backend,FastAPI'
+        },
+    });
+
+    console.log({ admin, instructor, course1, course2, module1 });
 }
 
 main()
     .then(async () => {
-        await prisma.$disconnect()
+        await prisma.$disconnect();
     })
     .catch(async (e) => {
-        console.error(e)
-        await prisma.$disconnect()
-        process.exit(1)
-    })
+        console.error(e);
+        await prisma.$disconnect();
+        process.exit(1);
+    });
