@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create interceptor for Unified Auth Strategy
 const api = axios.create({
-    baseURL: 'http://localhost:3000/api',
+    baseURL: '/api', // Use relative path to leverage Vite proxy
 });
 
 // Automatically inject JWT from localStorage

@@ -252,8 +252,8 @@ app.put("/api/user/profile", authenticate, async (req, res) => {
 // ----------------------
 app.post("/api/upload", authenticate, upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const baseUrl = process.env.UPLOAD_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const url = `${baseUrl}/uploads/${req.file.filename}`;
+    // Return relative path so it works across network via proxy
+    const url = `/uploads/${req.file.filename}`;
     res.json({ url });
 });
 
